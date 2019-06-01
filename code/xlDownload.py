@@ -2,6 +2,7 @@ import openpyxl
 import cv2
 import urllib.request
 import os
+import re
 
 
 book = openpyxl.load_workbook('../data/dai-asllvd-BU_glossing_with_variations_HS_information-extended-urls-RU.xlsx')
@@ -9,11 +10,10 @@ book = openpyxl.load_workbook('../data/dai-asllvd-BU_glossing_with_variations_HS
 sheet = book.active
 
 
-#EDIT THE FOLLOWING 2 PARAMS TO DECIDE WHICH ROW OF EXCEL FILE TO START AND END AT FOR DOWNLOADING VIDEOS
+#EDIT THE MAX_SIGNS_TO_DOWNLOAD PARAM TO DECIDE HOW MANY ASL CATEGORIES TO DOWNLOAD
+MAX_SIGNS_TO_DOWNLOAD = 50
+
 startRow=3
-endRow=35
-
-
 glossNameCol = 2
 consultantNameCol = 3
 sequenceCol = 13
@@ -24,21 +24,50 @@ baseURL = 'http://csr.bu.edu/ftp/asl/asllvd/asl-data2/quicktime/'
 cameraNum = "1"
 
 
-def playVideoFile(filename):
+def extractFrames(filename):
+	print("Extracting frames in " + filename)
+	parts = os.path.split(filename)
+	glossname = os.path.split(parts[0])[-1]
+	name = parts[1]
+	p = re.findall(r"_start\d+",name)
+	startFrame = int(re.findall(r"\d+",p[0])[0])
+	p = re.findall(r"_end\d+",name)
+	endFrame = int(re.findall(r"\d+",p[0])[0])
+
 	cap = cv2.VideoCapture(filename)
-	while(cap.isOpened()):
-	    ret, frame = cap.read()
-	    cv2.imshow('frame',frame)
-	    if cv2.waitKey(1) & 0xFF == ord('q'):
-	        break
+	total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+	width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+	height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+	fps = int(cap.get(cv2.CAP_PROP_FPS))
+
+	outFolder = os.path.join("../data/videos_cropped", glossname)
+	if not os.path.exists(outFolder):
+		os.makedirs(outFolder)
+
+	frameNum = startFrame
+	cap.set(cv2.CAP_PROP_POS_FRAMES, startFrame)
+	outFile = os.path.join(outFolder, name)
+	fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+	# fourcc = cv2.VideoWriter_fourcc('H', '2', '6', '4')
+	outcap = cv2.VideoWriter(outFile,fourcc, fps, (width,height))
+	while(cap.isOpened() and frameNum < endFrame):
+		ret, frame = cap.read()
+		cv2.imshow('frame',frame)
+		if cv2.waitKey(10) & 0xFF == ord('q'):
+			break
+		outcap.write(frame)
+		frameNum += 1
 
 	cap.release()
 	cv2.destroyAllWindows()
+	print("Done " + filename)
+
 
 
 def downloadVideos():
+	GlossDownloaded = 0
 	r = startRow
-	while True:
+	while GlossDownloaded < MAX_SIGNS_TO_DOWNLOAD:
 		v = sheet.cell(row=r, column=glossNameCol)
 		if(v.value is not None):
 			print("\nMain New Gloss: " + v.value)
@@ -69,10 +98,12 @@ def downloadVideos():
 				filename = str(seq.value) + "-" + "scene" + str(scene.value) + "-" + "camera" + cameraNum + "_start" + str(frameStart.value) + "_" + "end" + str(frameEnd.value) + ".mov"
 				filePath = os.path.join(videoFolderPath, filename)
 				urllib.request.urlretrieve(url, filePath)
-		if r >= endRow:
-			break
+				extractFrames(filePath)
+				GlossDownloaded += 1
 
 
 if __name__ == '__main__':
 	downloadVideos()
-	# playVideoFile("../data/videos/TWENTY/ASL_2008_05_12a-scene1-camera1_start2400_end2480.mov")
+
+	# filename = "../data/videos/TWENTY/ASL_2008_05_12a-scene1-camera1_start2400_end2480.mov"
+	# extractFrames(filename)
