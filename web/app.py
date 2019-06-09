@@ -27,6 +27,7 @@ class PredictSigns(Resource):
             image_file = request.files[UPLOAD_KEY]
             image_file.save("image_to_predict.jpg")
             image = io.BytesIO(image_file.read())
+            # TODO; Change this to final model's prediction script
             subprocess.call("python -m scripts.label_image --graph=model/retrained_graph.pb --image=sunflower-bunch_800x.jpg --labels=model/retrained_lables.txt", shell=True)
             with open('output.json', 'r') as f:
                 data = json.load(f)
