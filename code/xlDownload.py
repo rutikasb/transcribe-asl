@@ -13,7 +13,7 @@ sheet = book.active
 #EDIT THE MAX_SIGNS_TO_DOWNLOAD PARAM TO DECIDE HOW MANY ASL CATEGORIES TO DOWNLOAD
 MAX_SIGNS_TO_DOWNLOAD = 50
 
-startRow=3
+startRow=351
 glossNameCol = 2
 consultantNameCol = 3
 sequenceCol = 13
@@ -99,7 +99,7 @@ def downloadVideos():
 				filePath = os.path.join(videoFolderPath, filename)
 				urllib.request.urlretrieve(url, filePath)
 				extractFrames(filePath)
-				GlossDownloaded += 1
+			GlossDownloaded += 1
 
 
 if __name__ == '__main__':
