@@ -6,6 +6,8 @@ def process_videos(raw_data_path, processed_data_path):
     for d in ['train', 'test']:
         dirs = os.listdir(os.path.join(raw_data_path, d))
         for d2 in dirs:
+            if d2.startswith('.'):
+                continue
             video_files = os.listdir(os.path.join(raw_data_path, d, d2))
             if video_files:
                 for i in range(len(video_files)):
@@ -17,6 +19,7 @@ def process_videos(raw_data_path, processed_data_path):
                     success, image = cap.read()
                     count = 0
                     while success:
+                        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                         image = cv2.resize(image, (480, 480), interpolation = cv2.INTER_AREA)
                         filename = os.path.join(result_dir, f'frame{count:05d}.jpg')
                         print(filename)
