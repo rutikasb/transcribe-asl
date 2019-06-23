@@ -20,7 +20,7 @@ def process_videos(raw_data_path, processed_data_path):
                     count = 0
                     while success:
                         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                        image = cv2.resize(image, (480, 480), interpolation = cv2.INTER_AREA)
+                        image = cv2.resize(image, (299, 299), interpolation = cv2.INTER_AREA)
                         filename = os.path.join(result_dir, f'frame{count:05d}.jpg')
                         print(filename)
                         cv2.imwrite(filename, image)
