@@ -18,7 +18,7 @@ class FramesSeqGenerator(keras.utils.Sequence):
         self.colour_channels = colour_channels
         self.input_shape = (num_frames_per_video, height, width, colour_channels)
 
-        self.videos_list = pd.DataFrame(glob.glob(data_path + '/*/*'), columns=["frames_dir"])
+        self.videos_list = pd.DataFrame(sorted(glob.glob(data_path + '/*/*')), columns=["frames_dir"])
         self.num_samples = len(self.videos_list)
 
         labels = self.videos_list.frames_dir.apply(lambda s: s.split("/")[-2])
@@ -26,6 +26,7 @@ class FramesSeqGenerator(keras.utils.Sequence):
 
         # extract unique classes from all detected labels
         self.classes = sorted(list(self.videos_list.label.unique()))
+        print(f'Classes = {self.classes}')
         self.num_classes = len(self.classes)
 
         # encode labels
@@ -90,7 +91,7 @@ class FeaturesSeqGenerator(keras.utils.Sequence):
         self.input_shape = input_shape
         self.shuffle = shuffle
 
-        self.samples = pd.DataFrame(glob.glob(data_path + "/*/*.npy"), columns=["path"])
+        self.samples = pd.DataFrame(sorted(glob.glob(data_path + "/*/*.npy")), columns=["path"])
         self.num_samples = len(self.samples)
         # test shape of a sample
         # x = np.load(self.samples.path[0])

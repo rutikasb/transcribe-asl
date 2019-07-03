@@ -13,8 +13,9 @@ from keras.applications.inception_v3 import InceptionV3
 from keras.layers import LSTM
 from keras.models import load_model, Model
 from sequence_data_generator import FramesSeqGenerator, FeaturesSeqGenerator
+from keras import backend as K
 
-BATCH_SIZE = 32
+BATCH_SIZE = 25
 SEED = 42
 
 def extract_cnn_features(raw_data_dir, features_dir):
@@ -26,7 +27,7 @@ def extract_cnn_features(raw_data_dir, features_dir):
     base_model = Model(inputs=model.input, outputs=model.get_layer('avg_pool').output)
     _, height, width, channels = base_model.input_shape
 
-    frames = FramesSeqGenerator(raw_data_dir, BATCH_SIZE, 20, height, width, channels)
+    frames = FramesSeqGenerator(raw_data_dir, BATCH_SIZE, 20, height, width, channels, False)
     for i, video in frames.videos_list.iterrows():
         video_name = video.frames_dir.split('/')[-1]
         label = video.label
@@ -47,9 +48,10 @@ def train_lstm(features_path, epochs, num_features, num_classess):
     model.add(LSTM(num_features, dropout=0.2, input_shape=(20, num_features), return_sequences=True))
     model.add(LSTM(num_features * 1, return_sequences=False))
     model.add(Dense(num_classess, activation='softmax'))
-    optimizer = Adam(lr=1e-4)
+    optimizer = Adam(lr=1e-3)
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
-    callbacks = [EarlyStopping(monitor='val_loss', patience=10, verbose=0), ModelCheckpoint('video_1_LSTM_1_1024.h5', monitor='val_loss', save_best_only=True, verbose=0)]
+    # callbacks = [EarlyStopping(monitor='val_loss', patience=10, verbose=0), ModelCheckpoint('video_1_LSTM_1_1024.h5', monitor='val_loss', save_best_only=True, verbose=0)]
+    callbacks = [ModelCheckpoint('video_1_LSTM_1_1024.h5', monitor='val_loss', save_best_only=True, verbose=0)]
 
     train_features = FeaturesSeqGenerator(features_path + '/train', BATCH_SIZE, model.input_shape[1:])
     val_features = FeaturesSeqGenerator(features_path + '/test', BATCH_SIZE, model.input_shape[1:])
@@ -75,8 +77,14 @@ if __name__ == '__main__':
         print('Please provide path to video frames')
         exit()
 
-    extract_cnn_features(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
-    extract_cnn_features(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
+    # GPU configuration
+    # K.tensorflow_backend._get_available_gpus()
+    # config = tf.ConfigProto( device_count = {'GPU': 200, 'CPU': 4} )
+    # sess = tf.Session(config=config)
+    # keras.backend.set_session(sess)
+
+    # extract_cnn_features(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
+    # extract_cnn_features(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
 
     num_features = 2048
     num_classes = len(os.listdir(f'{args["features_path"]}/train'))
