@@ -1,0 +1,8 @@
+docker system prune -a
+docker build -t asl_docker .
+
+To process video - 
+docker run --rm -v /home/chandangope/ucb-mids/w210/transcribe-asl/data/videos_cropped_h264/ACCEPT/ASL_2006_10_10-scene2-camera1_start272_end283.mov.mp4:/home/video.mp4 -t asl_docker python obj_detect.py -v /home/video.mp4
+
+To process image - 
+docker run --rm -v /home/chandangope/ucb-mids/w210/transcribe-asl/data/images/apple.png:/home/image.png -t asl_docker python obj_detect.py -i /home/image.png
