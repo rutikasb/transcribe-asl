@@ -1,6 +1,7 @@
 import os
 import argparse
 import cv2
+from skimage import io
 
 def process_videos(raw_data_path, processed_data_path, rescale):
     for d in ['train', 'test']:
@@ -28,7 +29,8 @@ def process_videos(raw_data_path, processed_data_path, rescale):
                         # image = cv2.resize(image, (299, 299), interpolation = cv2.INTER_AREA)
                         filename = os.path.join(result_dir, f'frame{count:05d}.jpg')
                         print(filename)
-                        cv2.imwrite(filename, image)
+                        # cv2.imwrite(filename, image)
+                        io.imsave(filename, image)
                         success, image = cap.read()
                         count += 1
                     cap.release()
