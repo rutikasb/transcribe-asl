@@ -12,11 +12,17 @@ def process_videos(raw_data_path, processed_data_path):
             video_files = os.listdir(os.path.join(raw_data_path, d, d2))
             if video_files:
                 for i in range(len(video_files)):
+                    video_file = os.path.join(raw_data_path, d, d2, video_files[i])
+                    cap = cv2.VideoCapture(video_file)
+                    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                    if(total_frames < 20):
+                        print("Skipping {0}, less than 20 frame".format(video_file))
+                        continue
+
                     result_dir = os.path.join(processed_data_path, d, d2, f'video_{i}')
                     if not os.path.exists(result_dir):
                         os.makedirs(result_dir)
-                    video_file = os.path.join(raw_data_path, d, d2, video_files[i])
-                    cap = cv2.VideoCapture(video_file)
+
                     success, image = cap.read()
                     count = 0
                     while success:

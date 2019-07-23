@@ -19,12 +19,12 @@ from sequence_data_generator import FramesSeqGenerator, FeaturesSeqGenerator
 from data_generator import DataGenerator
 from keras import backend as K
 
+from tkinter import filedialog
+from tkinter import *
 
-model = InceptionV3(weights='imagenet', include_top=True)
-base_model = Model(inputs=model.input, outputs=model.get_layer('avg_pool').output)
-_, height, width, channels = base_model.input_shape
-print(base_model.input_shape)
 
+inceptionModel = InceptionV3(weights='imagenet', include_top=True)
+base_inceptionModel = Model(inputs=inceptionModel.input, outputs=inceptionModel.get_layer('avg_pool').output)
 lstm_model = load_model('video_LSTM.h5')
 
 sign_mapping = {0: 'AGAIN',
@@ -42,13 +42,15 @@ def get_cnn_features(frames):
     featuresList = []
     for frame in frames:
         img_data = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        height, width, depth = img_data.shape
-        sX = int(width/2 - 299/2)
-        sY = int(height/2 - 299/2)
-        img_data = img_data[sY:sY+299, sX:sX+299, :]
+        dim = (299, 299)
+        img_data = cv2.resize(img_data, dim, interpolation = cv2.INTER_AREA)
+        # height, width, depth = img_data.shape
+        # sX = int(width/2 - 299/2)
+        # sY = int(height/2 - 299/2)
+        # img_data = img_data[sY:sY+299, sX:sX+299, :]
         img_data = np.expand_dims(img_data, axis=0)
         img_data = preprocess_input(img_data)
-        inceptionv3_feature = base_model.predict(img_data)
+        inceptionv3_feature = base_inceptionModel.predict(img_data)
         featuresList.append(inceptionv3_feature)
     stackedFeatures = np.vstack(featuresList)
     return stackedFeatures
@@ -63,10 +65,7 @@ def randind(N, n):
     return nums
 
 
-def processVideo(filename, sequenceLength, featureLength):
-    global base_model
-    global lstm_model
-
+def processVideo(filename, sequenceLength, featureLength, show=False):
     print("Processing video file: {0}".format(filename))
     cap = cv2.VideoCapture(filename)
     total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -87,27 +86,46 @@ def processVideo(filename, sequenceLength, featureLength):
         cap.set(cv2.CAP_PROP_POS_FRAMES, f)
         ret, frame = cap.read()
         frames.append(frame)
-        cv2.imshow('frame',frame)
-        if cv2.waitKey(100) & 0xFF == ord('q'):
-            break
 
     X[0,] = get_cnn_features(frames)
     result = lstm_model.predict(X, verbose=1)
     predicted_sign = sign_mapping[np.argmax(result)]
     predicted_conf = result[0, np.argmax(result)]
     print("Predicted sign is {}, with conf {:0.2f}".format(predicted_sign, predicted_conf))
+
+    if(show==True):
+        for f in randomIndicesToProcess:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, f)
+            ret, frame = cap.read()
+            cv2.imshow('Video',frame)
+            cv2.moveWindow('Video', 900,300)
+            if cv2.waitKey(100) & 0xFF == ord('q'):
+                break
+        text = "{0}, conf {1}".format(predicted_sign, int(predicted_conf*100))
+        cv2.putText(frame, text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,255), 2, cv2.LINE_AA, )
+        cv2.imshow('Video',frame)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
     cap.release()
-    cv2.destroyAllWindows()
+    
 
 
 
 if __name__ == '__main__':
+    sequenceLength = 10
+    featureLength = 2048
+
     parser = argparse.ArgumentParser(description='Test CNN+LSTM model for short video snippets')
 
-    parser.add_argument('--video_path', required=True, help='path to the test video')
+    parser.add_argument('--video_path', required=False, help='path to the test video')
     args = vars(parser.parse_args())
-    print(args)
+    if args.get('video_path') is None:
+        while True:
+            args["video_path"] = filedialog.askopenfilename(initialdir="./raw_data/test", title='Select video file',
+                                                    filetypes=[("Video files", "*.avi *.AVI *.mp4 *.MP4")])
+            if not args["video_path"]:
+                break
+            processVideo(args['video_path'], sequenceLength, featureLength, show=True)
 
-    sequenceLength = 6
-    featureLength = 2048
-    processVideo(args['video_path'], sequenceLength, featureLength)
+    processVideo(args['video_path'], sequenceLength, featureLength, show=True)

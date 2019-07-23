@@ -19,8 +19,8 @@ from sequence_data_generator import FramesSeqGenerator, FeaturesSeqGenerator
 from data_generator import DataGenerator
 from keras import backend as K
 
-BATCH_SIZE = 32
-SEED = 42
+# BATCH_SIZE = 32
+# SEED = 42
 
 def extract_cnn_features(raw_data_dir, features_dir):
     # base_model = InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
@@ -115,14 +115,14 @@ def train_lstm_jittered(features_path, sequencelength, epochs, num_features, num
 
     callbacks = [ModelCheckpoint('video_LSTM.h5', monitor='val_loss', save_best_only=True, verbose=1)]
 
-    data_path, batch_size, featureLength, shuffle = 'cnn_features/train', 16, 2048, True
+    data_path, batch_size, featureLength, shuffle = 'cnn_features/train', 32, 2048, True
     train_gen = DataGenerator(data_path,
                             batch_size=batch_size,
                             featureLength=featureLength,
                             seqLength=sequencelength,
                             shuffle=shuffle)
 
-    data_path, batch_size, featureLength, shuffle = 'cnn_features/test', 3, 2048, False
+    data_path, batch_size, featureLength, shuffle = 'cnn_features/test', 16, 2048, False
     val_gen = DataGenerator(data_path,
                             batch_size=batch_size,
                             featureLength=featureLength,
@@ -165,11 +165,11 @@ if __name__ == '__main__':
     # extract_cnn_features_all(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
     # extract_cnn_features_all(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
 
-    num_features = 2048
-    num_classes = len(os.listdir(f'{args["features_path"]}/train'))
-
     # model = train_lstm(args['features_path'], args['lstm_epochs'], num_features, num_classes)
 
-    seqLength = 6
+    num_features = 2048
+    num_classes = len(os.listdir(f'{args["features_path"]}/train'))
+    seqLength = 10
     model = train_lstm_jittered(args['features_path'], seqLength, args['lstm_epochs'], num_features, num_classes)
+
     # model.save("final_model.h5")
