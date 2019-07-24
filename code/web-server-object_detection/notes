@@ -1,0 +1,2 @@
+# Run this command to deploy the app to your GCP app engine
+gcloud app deploy app.yaml --project=w210-asl-245104
