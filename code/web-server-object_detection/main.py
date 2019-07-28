@@ -153,5 +153,5 @@ if __name__ == "__main__":
 
     # This is used only when running locally.
     # For google app engine, Gunicorn is used, see entrypoint in app.yaml.
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=80, debug=True)
     
