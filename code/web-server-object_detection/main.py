@@ -17,8 +17,7 @@ from flask_cors import CORS
 from keras.applications.inception_v3 import InceptionV3
 from keras.applications.inception_v3 import preprocess_input
 from keras.models import load_model, Model
-
-
+from PREP_USER_VIDEO import CLIP_SINGLE_VIDEO as clip_single_video
 
 
 LSTM_MODEL_PATH = './models'
@@ -116,15 +115,12 @@ def processVideo(filename, sequenceLength, featureLength):
     return result
 
 
-
-
-
 @app.route("/predict/video", methods=["POST"])
 def predictVideo():
     # initialize the data dictionary that will be returned from the
     # view
     data = {"success": False}
- 
+
     # ensure an image was properly uploaded to our endpoint
     if flask.request.method == "POST":
         if flask.request.files.get("video"):
@@ -135,12 +131,13 @@ def predictVideo():
             filename = "video.avi"
             videofile.save(filename)
             videofile.close()
+            clip_single_video(filename, filename)
             sequenceLength = 10
             featureLength = 2048
             data["predictions"] = processVideo(filename, sequenceLength, featureLength)
             # indicate that the request was a success
             data["success"] = True
- 
+
     # return the data dictionary as a JSON response
     return flask.jsonify(data)
 
