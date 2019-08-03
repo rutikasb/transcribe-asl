@@ -11,6 +11,7 @@ import sys
 import io
 import logging
 import cv2
+import time
 from PIL import Image
 from keras.preprocessing.image import img_to_array
 from flask_cors import CORS
@@ -124,6 +125,10 @@ def predictVideo():
     # ensure an image was properly uploaded to our endpoint
     if flask.request.method == "POST":
         if flask.request.files.get("video"):
+            record_type = flask.request.form.get('record_type', '')
+            username = flask.request.form.get('username', '')
+            attempted_sign = flask.request.form.get('attempted_sign', '')
+            timestamp = int(time.time())
             # read the image in PIL format and prepare it for
             # classification
             videofile = flask.request.files["video"]
@@ -132,11 +137,16 @@ def predictVideo():
             videofile.save(filename)
             videofile.close()
             clip_single_video(filename, filename)
-            sequenceLength = 10
+            sequenceLength = 20
             featureLength = 2048
-            data["predictions"] = processVideo(filename, sequenceLength, featureLength)
+            predictions = processVideo(filename, sequenceLength, featureLength)
+            data["predictions"] = predictions
             # indicate that the request was a success
             data["success"] = True
+
+            print(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
+            with open("logs/api.log", "a") as f:
+                f.write(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
 
     # return the data dictionary as a JSON response
     return flask.jsonify(data)
@@ -153,5 +163,5 @@ if __name__ == "__main__":
 
     # This is used only when running locally.
     # For google app engine, Gunicorn is used, see entrypoint in app.yaml.
-    app.run(host='0.0.0.0', port=80, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
     
