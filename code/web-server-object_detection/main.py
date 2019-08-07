@@ -136,7 +136,7 @@ def predictVideo():
             filename = "video.avi"
             videofile.save(filename)
             videofile.close()
-            clip_single_video(filename, filename)
+            clip_single_video(VIDEO_FILE=filename, OUTPUT_FILE=filename, ADDITIONAL_LEADING_FRAMES_TO_CLIP=8, ADDITIONAL_TRAILING_FRAMES_TO_CLIP=10)
             sequenceLength = 20
             featureLength = 2048
             predictions = processVideo(filename, sequenceLength, featureLength)
@@ -145,7 +145,7 @@ def predictVideo():
             data["success"] = True
 
             print(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
-            with open("logs/api.log", "a") as f:
+            with open("logs/tracking.csv", "a") as f:
                 f.write(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
 
     # return the data dictionary as a JSON response
