@@ -57,7 +57,11 @@ sign_mapping = {0: 'AGAIN',
                 7: 'NAME',
                 8: 'WALK'}
 
-
+if not os.path.exists('user_videos'):
+    os.mkdir('user_videos')
+for key, value in sign_mapping.items():
+    if not os.path.exists(f'user_videos/{value}'):
+        os.mkdir(f'user_videos/{value}')
 
 def get_cnn_features(frames):
     with graph.as_default():
@@ -135,9 +139,10 @@ def predictVideo():
             print("Type of videofile: {}".format(type(videofile)))
             filename = "video.avi"
             videofile.save(filename)
+            videofile.save(f'user_videos/{attempted_sign.upper()}/{timestamp}.avi')
             videofile.close()
             clip_single_video(VIDEO_FILE=filename, OUTPUT_FILE=filename, ADDITIONAL_LEADING_FRAMES_TO_CLIP=8, ADDITIONAL_TRAILING_FRAMES_TO_CLIP=10)
-            sequenceLength = 20
+            sequenceLength = 10
             featureLength = 2048
             predictions = processVideo(filename, sequenceLength, featureLength)
             data["predictions"] = predictions
