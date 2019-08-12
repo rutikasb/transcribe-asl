@@ -19,8 +19,6 @@ from sequence_data_generator import FramesSeqGenerator, FeaturesSeqGenerator
 from data_generator import DataGenerator
 from keras import backend as K
 
-# BATCH_SIZE = 32
-# SEED = 42
 
 def extract_cnn_features(raw_data_dir, features_dir):
     # base_model = InceptionV3(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
@@ -161,15 +159,13 @@ if __name__ == '__main__':
 
     # extract_cnn_features(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
     # extract_cnn_features(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
+    # model = train_lstm(args['features_path'], args['lstm_epochs'], num_features, num_classes)
 
     # extract_cnn_features_all(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
     # extract_cnn_features_all(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
-
-    # model = train_lstm(args['features_path'], args['lstm_epochs'], num_features, num_classes)
-
     num_features = 2048
     num_classes = len(os.listdir(f'{args["features_path"]}/train'))
-    seqLength = 10
+    seqLength = 7
     model = train_lstm_jittered(args['features_path'], seqLength, args['lstm_epochs'], num_features, num_classes)
 
     # model.save("final_model.h5")

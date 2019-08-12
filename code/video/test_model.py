@@ -68,24 +68,60 @@ def randind(N, n):
 def processVideo(filename, sequenceLength, featureLength, show=False):
     print("Processing video file: {0}".format(filename))
     cap = cv2.VideoCapture(filename)
-    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-    ret, frame = cap.read()
-    if ret == False:
+    success, image = cap.read()
+    if success == False:
         print("Could not open video file: {0}".format(filename))
         return
 
+    prvs = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    hsv = np.zeros_like(image)
+    hsv[...,1] = 255
+    count = 0
+    ofFrames = []
+    while success:
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        success, frame2 = cap.read()
+        if not success:
+            break
+        next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
+        flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 9, 3, 5, 1.2, 0)
+        mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
+        hsv[...,0] = ang*180/np.pi/2
+        hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
+        rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
+        image = cv2.resize(rgb, (299, 299), interpolation = cv2.INTER_AREA)
+        # cv2.imwrite(filename, image)
+        ofFrames.append(image)
+        prvs = next
+        count += 1
+    cap.release()
+    total_frames = len(ofFrames)
     randomIndicesToProcess = randind(total_frames, sequenceLength)
     dim = (sequenceLength, featureLength)
     frames = []
     X = np.empty((1, *dim))
     for f in randomIndicesToProcess:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, f)
-        ret, frame = cap.read()
+        frame = ofFrames[f]
         frames.append(frame)
+
+    # total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    # fps = int(cap.get(cv2.CAP_PROP_FPS))
+
+    # ret, frame = cap.read()
+    # if ret == False:
+    #     print("Could not open video file: {0}".format(filename))
+    #     return
+
+    # randomIndicesToProcess = randind(total_frames, sequenceLength)
+    # dim = (sequenceLength, featureLength)
+    # frames = []
+    # X = np.empty((1, *dim))
+    # for f in randomIndicesToProcess:
+    #     cap.set(cv2.CAP_PROP_POS_FRAMES, f)
+    #     ret, frame = cap.read()
+    #     frames.append(frame)
 
     X[0,] = get_cnn_features(frames)
     result = lstm_model.predict(X, verbose=1)
@@ -94,6 +130,7 @@ def processVideo(filename, sequenceLength, featureLength, show=False):
     print("Predicted sign is {}, with conf {:0.2f}".format(predicted_sign, predicted_conf))
 
     if(show==True):
+        cap = cv2.VideoCapture(filename)
         for f in randomIndicesToProcess:
             cap.set(cv2.CAP_PROP_POS_FRAMES, f)
             ret, frame = cap.read()
@@ -113,7 +150,7 @@ def processVideo(filename, sequenceLength, featureLength, show=False):
 
 
 if __name__ == '__main__':
-    sequenceLength = 10
+    sequenceLength = 7
     featureLength = 2048
 
     parser = argparse.ArgumentParser(description='Test CNN+LSTM model for short video snippets')
@@ -122,7 +159,7 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     if args.get('video_path') is None:
         while True:
-            args["video_path"] = filedialog.askopenfilename(initialdir="./raw_data/test", title='Select video file',
+            args["video_path"] = filedialog.askopenfilename(initialdir="./Test-Only-Clips", title='Select video file',
                                                     filetypes=[("Video files", "*.avi *.AVI *.mp4 *.MP4")])
             if not args["video_path"]:
                 break
