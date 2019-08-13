@@ -1,0 +1,363 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Give me a Sign</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300|Sonsie+One" rel="stylesheet" type="text/css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+  <link href="../node_modules/video.js/dist/video-js.min.css" rel="stylesheet">
+  <link href="../dist/css/videojs.record.css" rel="stylesheet">
+  <link href="assets/css/examples.css" rel="stylesheet">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+  <script src="../node_modules/video.js/dist/video.min.js"></script>
+  <script src="../node_modules/recordrtc/RecordRTC.js"></script>
+  <script src="../node_modules/webrtc-adapter/out/adapter.js"></script>
+
+  <script src="../dist/videojs.record.js"></script>
+
+  <script src="browser-workarounds.js"></script>
+
+  <script>
+    $(document).ready(function() {
+      var username = localStorage.getItem('username');
+      console.log(username);
+      document.getElementById('username-current').innerText = username;
+    });
+
+    function saveUsername() {
+      console.log('Saving username');
+      var uname = document.getElementById('uname').value;
+      localStorage.setItem('username', uname);
+      document.getElementById('username-current').innerText = uname;
+      return false;
+    }
+
+    var form = document.getElementById('file-form');
+    var fileSelect = document.getElementById('file-select');
+    var uploadButton = document.getElementById('upload-button');
+
+    function readURL(input) {
+      if (input.files && input.files[0]) {
+        console.log('files found');
+        var reader = new FileReader();
+
+        reader.onload = function(e) {
+          $('#blah').attr('src', e.target.result);
+        }
+
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function readURL2(input) {
+      if (input.files && input.files[0]) {
+        console.log('video files found');
+        var reader = new FileReader();
+
+        reader.onload = function(e) {
+          var video = document.getElementById('pre-rec-video');
+          console.log(e.target.result);
+          video.src = e.target.result;
+        }
+
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    form.onsubmit = function(event) {
+       event.preventDefault();
+      // alert("captured submit");
+
+       uploadButton.innerHTML = 'Uploading... Can take a bit';
+
+       var files = fileSelect.files;
+       var file = files[0];
+       var formData = new FormData();
+
+       formData.append('image',file,file.name);
+
+       var xhr = new XMLHttpRequest();
+       xhr.open('POST','https://w210-asl-245104.appspot.com/predict',true);
+       var response;
+
+       xhr.onload = function () {
+          if (xhr.status === 200) {
+            // File(s) uploaded.
+            uploadButton.innerHTML = 'Done';
+            response = JSON.parse(xhr.responseText);
+            console.log(response["predictions"][0]["label"]);
+            $("#result").empty().append("You gave me: ");
+            $("#result").append(response["predictions"][0]["label"].bold());
+            $("#result").append(", with a probability of: ");
+            $("#result").append(response["predictions"][0]["conf"].toFixed(4));
+            $("#image-holder").empty().append(file);
+          } else {
+            alert('An error occurred in communicating with model server');
+          }
+       }
+       xhr.send(formData);
+    };
+  </script>
+</head>
+<body>
+
+<nav>
+      <ul>
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Our team</a></li>
+        <li><a href="#">ASL Resources</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+</nav>
+
+<p class="header"> American Sign Language (ASL) is the primary language of nearly 1 million deaf North Americans.
+ASL is a visual language, using hand gestures, body movements, and facial expressions. It has
+its own syntax and grammar.
+This valuable means of communication and building 
+relationships with the deaf is often overlooked in most language training apps.
+Our application, powered by cutting edge deep learning techniques, offers an easy way of mastering ASL. 
+</p>
+
+<p class="header"> Allow access to your webcam, record an ASL word and receive feedback on what it means.</p>
+
+
+<div id="username">
+  <label for="username">Enter a username to receive feedback on your performance later: <span id="username-current"></span></label>
+  <form action="#" onsubmit="return saveUsername()">
+    <input type="text" id="uname" name="uname" style="font-size:15px;">
+    <input type="submit" value="Submit" style="font-size:15px;">
+  </form>
+</div>
+
+<table class="instructions">
+  <tr>
+    <th>Instructions for Learning and Practicing Signs</th>
+  </tr>
+  <tr>
+    <td>
+      1. Select a sign to practice from the dopdown list. A refernce video will appear in the left cell below.&#13;&#7;
+      2. Click the play button on the reference video to see how the sign is made. You can watch it as many times as you would like.&#13;&#7;
+      3. Be sure to have read and followed the <a href="#" target="popup" onclick="window.open('popup.html','popup','width=600,height=620,scrollbars=no,resizable=no'); return false;">instructions for how to position yourself for your webcam</a>.&#13;&#7;
+      4. When you are ready to attempt the sign yourself, click the record button on the camera screen in the right cell and make the sign.&#13;&#7;
+      5. When you are finished, click the stop recording button to stop the recording. The computer will tell you what sign you made within a few seconds.&#13;&#7;
+
+                                                                                      Good luck, and happy learning!
+    </td>
+  </tr>
+</table>
+
+<div class="dropdown-sec">
+  <span style="font-size: 20px; font-weight: bolder;padding-right:5px;">Select a sign to Practice</span>
+  <div class="dropdown">
+    <select id="dropbtn" onchange="updateSignVideo();">
+      <option value="again" selected>AGAIN</option>
+      <option value="beautiful">BEAUTIFUL</option>
+      <option value="boy">BOY</option>
+      <option value="car">CAR</option>
+      <option value="drink">DRINK</option>
+      <option value="family">FAMILY</option>
+      <option value="hello">HELLO</option>
+      <option value="name">NAME</option>
+      <option value="walk">WALK</option>
+    </select>
+  </div>
+</div>
+
+<div class="videos-sec">
+  <div style="float:left" id="tutorial-video">
+    <div id="video-title"> Reference Video </div>
+    <video controls width="500" height="400" id="tutorial-video-src">
+      <source src="assets/video/again.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <div style="float:left">
+    <div id="video-title1"> Now you try it! </div>
+    <video id="myVideo" playsinline class="video-js vjs-default-skin"></video>
+  </div>
+
+  <div style="float:left;padding-top:20px;">
+    <span id="recorded-video-result"></span>
+  </div>
+  <div style="float:left;padding-top:20px;">
+    <div id="loaderDiv" style="display:none;"/>
+  </div>
+</div>
+
+<div class="upload-sec">
+  <div class="image-upload-sec">
+    <form id="file-form" action="https://w210-asl-245104.appspot.com/predict" method="POST" enctype="multipart/form-data">
+      <label class="btn btn-primary">
+        <i class="fa fa-image"></i> Give Me A Sign: Upload an Image<br><br><input type="file" id="file-select" name="image" onchange="readURL(this)"/><br><br>
+        <img src="" height="200" alt="Image preview..." id="blah">
+      </label>
+      <br><br><button type="submit" id="upload-button">Upload</button>
+    </form>
+    <br>
+    <div id="result"></div>
+    <div id="image-holder"> </div>
+  </div>
+
+  <br>
+
+  <div class="video-upload-sec">
+    <form id="file-form1" action="http://52.117.25.185/predict/video" method="POST" enctype="multipart/form-data">
+      <label class="btn btn-primary">
+        <i class="fa fa-image"></i> Give Me A Sign: Upload a pre-recorded video<br><br><input type="file" id="file-select1" name="image" onchange="readURL2(this)"/><br><br>
+        <video width="200" controls id="pre-rec-video">
+          <source alt="Video preview..." src="">
+        </video>
+      </label>
+      <br><br><button type="submit" id="upload-button1">Upload Video</button>
+    </form>
+    <br>
+    <div id="result1"></div>
+    <div id="video-holder"> </div>
+  </div>
+</div>
+
+<script>
+  var form = document.getElementById('file-form1');
+  var fileSelect = document.getElementById('file-select1');
+  var uploadButton = document.getElementById('upload-button1');
+
+  form.onsubmit = function(event) {
+     event.preventDefault();
+     // alert("captured submit");
+
+     uploadButton.innerHTML = 'Uploading... Can take a bit';
+
+     var files = fileSelect.files;
+     var file = files[0];
+     var formData = new FormData();
+
+     formData.append('video', file, file.name);
+
+     var xhr = new XMLHttpRequest();
+     xhr.open('POST','http://52.117.25.185/predict/video', true);
+     var response;
+
+     xhr.onload = function () {
+        if (xhr.status === 200) {
+          console.log("uploaded the recorded video");
+          // File(s) uploaded.
+          uploadButton.innerHTML = 'Done';
+          response = JSON.parse(xhr.responseText);
+          console.log(response["predictions"][0]["label"]);
+          $("#result1").empty().append("You gave me: ");
+          $("#result1").append(response["predictions"][0]["label"].bold());
+          $("#result1").append(", with a probability of: ");
+          $("#result1").append(response["predictions"][0]["conf"].toFixed(4));
+          $("#video-holder").empty().append(file);
+        } else {
+          alert('An error occurred in communicating with model server');
+        }
+     }
+     xhr.send(formData);
+  };
+
+  function updateSignVideo() {
+    var selectedSign = document.getElementById("dropbtn").value;
+    console.log(selectedSign);
+    var signVideo = document.getElementById("tutorial-video-src");
+    console.log(signVideo);
+    signVideo.src = "assets/video/" + selectedSign + ".mp4";
+    signVideo.load();
+  }
+</script>
+
+
+<script>
+  var options = {
+      controls: true,
+      width: 500,
+      height: 390,
+      fluid: false,
+      plugins: {
+          record: {
+              audio: false,
+              video: true,
+              maxLength: 100,
+              debug: true
+          }
+      }
+  };
+
+  // apply some workarounds for opera browser
+  // applyVideoWorkaround();
+
+  var player = videojs('myVideo', options, function() {
+      // print version information at startup
+      var msg = 'Using video.js ' + videojs.VERSION +
+          ' with videojs-record ' + videojs.getPluginVersion('record') +
+          ' and recordrtc ' + RecordRTC.version;
+      videojs.log(msg);
+  });
+
+  // error handling
+  player.on('deviceError', function() {
+      console.log('device error:', player.deviceErrorCode);
+  });
+
+  player.on('error', function(element, error) {
+      console.error(error);
+  });
+
+  // user clicked the record button and started recording
+  player.on('startRecord', function() {
+      console.log('started recording!');
+  });
+
+  // user completed recording and stream is available
+  player.on('finishRecord', function() {
+    $("#loaderDiv").show();
+    document.getElementById('recorded-video-result').style.display = "none";
+    // the blob object contains the recorded data that
+    // can be downloaded by the user, stored on server etc.
+    var data = player.recordedData;
+    // var serverUrl = "/upload";
+    var serverUrl = "http://52.117.25.185/predict/video";
+    var formData = new FormData();
+    formData.append('video', data, data.name);
+    formData.append('attempted_sign', document.getElementById("dropbtn").value.toUpperCase());
+    formData.append('username', localStorage.getItem('username'));
+    console.log('uploading recording:', data.name);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST','http://52.117.25.185/predict/video',true);
+    var response;
+
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        $("#loaderDiv").hide();
+        // File(s) uploaded.
+        // uploadButton.innerHTML = "Done";
+        console.log('status',xhr.status);
+        response = JSON.parse(xhr.responseText);
+        console.log(response["predictions"][0]["label"]);
+        var selectedSign = document.getElementById("dropbtn").value.toUpperCase();
+        var result = "Attempted Sign: " + selectedSign + "; Predicted Sign: " +
+          response["predictions"][0]["label"] + "; Confidence: " +
+          response["predictions"][0]["conf"] + "%";
+        document.getElementById('recorded-video-result').innerText = result;
+        document.getElementById('recorded-video-result').style.display = "block";
+        $("#video-holder1").empty().append(file);
+      } else {
+        alert('An error occurred in communicating with model server');
+      }
+    }
+    xhr.send(formData);
+    console.log("uploading recording:", data.name);
+    console.log("finished recording: ", player.recordedData);
+  });
+</script>
+
+</body>
+</html>
