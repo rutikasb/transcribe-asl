@@ -1,5 +1,15 @@
+"""
+Make sure the file 'models/video_LSTM.h5' is present
+Make sure there is a folder 'logs'
+
+Sample curl command:
+curl -X POST -F 'username=username' -F 'record_type=record_type' -F 'attempted_sign=NAME' -F "video=@/home/chandangope/py/temp/transcribe-asl/Test-Only-Clips/newClips/NAME/WIN_20190811_13_49_33_Pro.mp4" localhost:8080/predict/video
+"""
+
+
 from threading import Thread
 import os
+from shutil import copyfile
 import numpy as np
 import tensorflow as tf
 import base64
@@ -22,7 +32,6 @@ from PREP_USER_VIDEO import CLIP_SINGLE_VIDEO as clip_single_video
 
 
 LSTM_MODEL_PATH = './models'
-global inceptionModel
 global base_inceptionModel
 global lstm_model
 
@@ -86,38 +95,57 @@ def randind(N, n):
     return nums
 
 
-def processVideo(filename, sequenceLength, featureLength):
+def processVideo(filename, sequenceLength, featureLength, show=False):
+    retValue = []
     print("Processing video file: {0}".format(filename))
     cap = cv2.VideoCapture(filename)
-    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-    ret, frame = cap.read()
-    if ret == False:
+    success, image = cap.read()
+    if success == False:
         print("Could not open video file: {0}".format(filename))
         return
 
-    randomIndicesToProcess = randind(total_frames, sequenceLength)
-    dim = (sequenceLength, featureLength)
-    frames = []
-    X = np.empty((1, *dim))
-    for f in randomIndicesToProcess:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, f)
-        ret, frame = cap.read()
-        frames.append(frame)
-
-    X[0,] = get_cnn_features(frames)
-    with graph.as_default():
-        result = lstm_model.predict(X, verbose=1)
-    predicted_sign = sign_mapping[np.argmax(result)]
-    predicted_conf = result[0, np.argmax(result)]
-    result = []
-    result.append({'label': predicted_sign, 'conf': int(100*predicted_conf)})
-    print("Predicted sign is {}, with conf {}".format(predicted_sign, 100*predicted_conf))
+    prvs = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    hsv = np.zeros_like(image)
+    hsv[...,1] = 255
+    count = 0
+    ofFrames = []
+    while success:
+        success, frame2 = cap.read()
+        if not success:
+            break
+        next = cv2.cvtColor(frame2,cv2.COLOR_BGR2GRAY)
+        flow = cv2.calcOpticalFlowFarneback(prvs,next, None, 0.5, 3, 9, 3, 5, 1.2, 0)
+        mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
+        hsv[...,0] = ang*180/np.pi/2
+        hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
+        rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
+        image = cv2.resize(rgb, (299, 299), interpolation = cv2.INTER_AREA)
+        ofFrames.append(image)
+        prvs = next
+        count += 1
     cap.release()
-    return result
+    total_frames = len(ofFrames)
+    if(total_frames > sequenceLength):
+        randomIndicesToProcess = randind(total_frames, sequenceLength)
+        dim = (sequenceLength, featureLength)
+        frames = []
+        X = np.empty((1, *dim))
+        for f in randomIndicesToProcess:
+            frame = ofFrames[f]
+            frames.append(frame)
+
+        X[0,] = get_cnn_features(frames)
+        with graph.as_default():
+            result = lstm_model.predict(X, verbose=1)
+        predicted_sign = sign_mapping[np.argmax(result)]
+        predicted_conf = result[0, np.argmax(result)]
+        
+        retValue.append({'label': predicted_sign, 'conf': int(100*predicted_conf)})
+        print("Predicted sign is {}, with conf {}".format(predicted_sign, 100*predicted_conf))
+    else:
+        print("total_frames is less than sequenceLength, cannot process")
+
+    return retValue
 
 
 @app.route("/predict/video", methods=["POST"])
@@ -133,16 +161,14 @@ def predictVideo():
             username = flask.request.form.get('username', '')
             attempted_sign = flask.request.form.get('attempted_sign', '')
             timestamp = int(time.time())
-            # read the image in PIL format and prepare it for
-            # classification
             videofile = flask.request.files["video"]
-            print("Type of videofile: {}".format(type(videofile)))
             filename = "video.avi"
             videofile.save(filename)
-            videofile.save(f'user_videos/{attempted_sign.upper()}/{timestamp}.avi')
+            loggedVideoFile = os.path.join('user_videos', attempted_sign.upper(), str(timestamp) + '.avi')
+            copyfile(filename, loggedVideoFile)
             videofile.close()
             clip_single_video(VIDEO_FILE=filename, OUTPUT_FILE=filename, ADDITIONAL_LEADING_FRAMES_TO_CLIP=8, ADDITIONAL_TRAILING_FRAMES_TO_CLIP=10)
-            sequenceLength = 10
+            sequenceLength = 7
             featureLength = 2048
             predictions = processVideo(filename, sequenceLength, featureLength)
             data["predictions"] = predictions
@@ -150,7 +176,12 @@ def predictVideo():
             data["success"] = True
 
             print(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
-            with open("logs/tracking.csv", "a") as f:
+            logfilename = 'logs/api.log'
+            if os.path.exists(logfilename):
+                append_write = 'a' # append if already exists
+            else:
+                append_write = 'w' # make a new file if not
+            with open(logfilename, append_write) as f:
                 f.write(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
 
     # return the data dictionary as a JSON response
