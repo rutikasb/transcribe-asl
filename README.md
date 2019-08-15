@@ -26,4 +26,5 @@ We haven't made the self recorded videos public, but you get the BU videos we us
 
 
 ### Pre-trained model
+
 You can download a pre-trained model which can recognize the signs AGAIN, BEAUTIFUL, BOY, CAR, DRINK, FAMILY, HELLO, NAME, WALK from [here](https://drive.google.com/file/d/1Zr4YToaHmilSioaKwm0iyVh0CzoTdc3H/view?usp=sharing).
