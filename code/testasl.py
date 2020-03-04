@@ -1,57 +1,44 @@
-import os
 import numpy as np
-import glob
-import cv2, json
+import cv2
 import argparse
-from sklearn.utils import shuffle
-from keras.optimizers import SGD, Adam
-from keras.models import Sequential
-from keras.layers import Dropout, Dense
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.preprocessing import image
-from keras.preprocessing.image import ImageDataGenerator
-from keras import applications
-from keras.applications.inception_v3 import InceptionV3
-from keras.applications.inception_v3 import preprocess_input
 from keras.layers import LSTM
+from keras.applications import MobileNet
 from keras.models import load_model, Model
-from sequence_data_generator import FramesSeqGenerator, FeaturesSeqGenerator
-from data_generator import DataGenerator
-from keras import backend as K
+from keras.applications.mobilenet import preprocess_input
 
 from tkinter import filedialog
 from tkinter import *
 
 
-inceptionModel = InceptionV3(weights='imagenet', include_top=True)
-base_inceptionModel = Model(inputs=inceptionModel.input, outputs=inceptionModel.get_layer('avg_pool').output)
+model=MobileNet(weights='imagenet',include_top=True)
+base_model = Model(inputs=model.input, outputs=model.get_layer('global_average_pooling2d_1').output)
 lstm_model = load_model('video_LSTM.h5')
 
 sign_mapping = {0: 'AGAIN',
                 1: 'BEAUTIFUL',
-                2: 'BOY',
-                3: 'CAR',
-                4: 'DRINK',
-                5: 'FAMILY',
-                6: 'HELLO',
-                7: 'NAME',
-                8: 'WALK'}
+                2: 'BEST',
+                3: 'BOY',
+                4: 'CAR',
+                5: 'DRINK',
+                6: 'FAMILY',
+                7: 'HELLO',
+                8: 'HOT',
+                9: 'NAME',
+                10: 'SAY',
+                11: 'TIRED',
+                12: 'WALK'}
 
 
 def get_cnn_features(frames):
     featuresList = []
     for frame in frames:
         img_data = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        dim = (299, 299)
+        dim = (224, 224)
         img_data = cv2.resize(img_data, dim, interpolation = cv2.INTER_AREA)
-        # height, width, depth = img_data.shape
-        # sX = int(width/2 - 299/2)
-        # sY = int(height/2 - 299/2)
-        # img_data = img_data[sY:sY+299, sX:sX+299, :]
         img_data = np.expand_dims(img_data, axis=0)
         img_data = preprocess_input(img_data)
-        inceptionv3_feature = base_inceptionModel.predict(img_data)
-        featuresList.append(inceptionv3_feature)
+        mobilenet_feature = base_model.predict(img_data)
+        featuresList.append(mobilenet_feature)
     stackedFeatures = np.vstack(featuresList)
     return stackedFeatures
 
@@ -94,7 +81,7 @@ def processVideo(filename, sequenceLength, featureLength, show=False):
         hsv[...,0] = ang*180/np.pi/2
         hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
         rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2BGR)
-        image = cv2.resize(rgb, (299, 299), interpolation = cv2.INTER_AREA)
+        image = cv2.resize(rgb, (224, 224), interpolation = cv2.INTER_AREA)
         # cv2.imwrite(filename, image)
         ofFrames.append(image)
         out.write(image)
@@ -110,25 +97,6 @@ def processVideo(filename, sequenceLength, featureLength, show=False):
     for f in randomIndicesToProcess:
         frame = ofFrames[f]
         frames.append(frame)
-
-    # total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    # fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-    # ret, frame = cap.read()
-    # if ret == False:
-    #     print("Could not open video file: {0}".format(filename))
-    #     return
-
-    # randomIndicesToProcess = randind(total_frames, sequenceLength)
-    # dim = (sequenceLength, featureLength)
-    # frames = []
-    # X = np.empty((1, *dim))
-    # for f in randomIndicesToProcess:
-    #     cap.set(cv2.CAP_PROP_POS_FRAMES, f)
-    #     ret, frame = cap.read()
-    #     frames.append(frame)
 
     X[0,] = get_cnn_features(frames)
     result = lstm_model.predict(X, verbose=1)
@@ -152,13 +120,14 @@ def processVideo(filename, sequenceLength, featureLength, show=False):
         cv2.destroyAllWindows()
 
     cap.release()
+    return "Predicted sign is {}, with conf {:0.2f}".format(predicted_sign, predicted_conf)
     
 
 
 
 if __name__ == '__main__':
     sequenceLength = 7
-    featureLength = 2048
+    featureLength = 1024
 
     parser = argparse.ArgumentParser(description='Test CNN+LSTM model for short video snippets')
 
@@ -166,10 +135,11 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     if args.get('video_path') is None:
         while True:
-            args["video_path"] = filedialog.askopenfilename(initialdir="./Test-Only-Clips", title='Select video file',
+            args["video_path"] = filedialog.askopenfilename(initialdir="../data/test", title='Select video file',
                                                     filetypes=[("Video files", "*.avi *.AVI *.mp4 *.MP4")])
             if not args["video_path"]:
                 break
-            processVideo(args['video_path'], sequenceLength, featureLength, show=True)
+            result = processVideo(args['video_path'], sequenceLength, featureLength, show=True)
+            print(result)
 
-    processVideo(args['video_path'], sequenceLength, featureLength, show=True)
+    result = processVideo(args['video_path'], sequenceLength, featureLength, show=True)

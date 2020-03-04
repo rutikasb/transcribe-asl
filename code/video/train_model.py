@@ -12,6 +12,7 @@ from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 from keras import applications
 from keras.applications.inception_v3 import InceptionV3
+from keras.applications import MobileNet
 from keras.applications.inception_v3 import preprocess_input
 from keras.layers import LSTM
 from keras.models import load_model, Model
@@ -46,11 +47,15 @@ def extract_cnn_features(raw_data_dir, features_dir):
     return
 
 def extract_cnn_features_all(raw_data_dir, features_dir):
-    model = InceptionV3(weights='imagenet', include_top=True)
-    base_model = Model(inputs=model.input, outputs=model.get_layer('avg_pool').output)
+    # model = InceptionV3(weights='imagenet', include_top=True)
+    # base_model = Model(inputs=model.input, outputs=model.get_layer('avg_pool').output)
+    # _, height, width, channels = base_model.input_shape
+
+    model=MobileNet(weights='imagenet',include_top=True) #imports the mobilenet model and discards the last 1000 neuron layer.
+    base_model = Model(inputs=model.input, outputs=model.get_layer('global_average_pooling2d_1').output)
     _, height, width, channels = base_model.input_shape
 
-    print(base_model.input_shape)
+    print(base_model.summary())
 
     signs = sorted([name for name in os.listdir(raw_data_dir) if os.path.isdir(os.path.join(raw_data_dir, name))])
     for sign in signs:
@@ -140,32 +145,33 @@ def train_lstm_jittered(features_path, sequencelength, epochs, num_features, num
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train CNN+LSTM model for short video snippets')
+    extract_cnn_features_all(None, None)
 
-    parser.add_argument('--data-path', default='processed_data', required=False, help='path to the train and test directories')
-    parser.add_argument('--lstm-epochs', default=100, required=False, help='number of LSTM epochs')
-    parser.add_argument('--reload-cnn-features', default=True, required=False, help='re-extract CNN features from frames')
-    parser.add_argument('--features-path', default='cnn_features', required=False, help='extracted CNN features path')
-    args = vars(parser.parse_args())
-    print(args)
-    if args.get('data_path') is None:
-        print('Please provide path to video frames')
-        exit()
+    # parser.add_argument('--data-path', default='processed_data', required=False, help='path to the train and test directories')
+    # parser.add_argument('--lstm-epochs', default=100, required=False, help='number of LSTM epochs')
+    # parser.add_argument('--reload-cnn-features', default=True, required=False, help='re-extract CNN features from frames')
+    # parser.add_argument('--features-path', default='cnn_features', required=False, help='extracted CNN features path')
+    # args = vars(parser.parse_args())
+    # print(args)
+    # if args.get('data_path') is None:
+    #     print('Please provide path to video frames')
+    #     exit()
 
-    # GPU configuration
-    # K.tensorflow_backend._get_available_gpus()
-    # config = tf.ConfigProto( device_count = {'GPU': 200, 'CPU': 4} )
-    # sess = tf.Session(config=config)
-    # keras.backend.set_session(sess)
+    # # GPU configuration
+    # # K.tensorflow_backend._get_available_gpus()
+    # # config = tf.ConfigProto( device_count = {'GPU': 200, 'CPU': 4} )
+    # # sess = tf.Session(config=config)
+    # # keras.backend.set_session(sess)
 
-    # extract_cnn_features(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
-    # extract_cnn_features(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
-    # model = train_lstm(args['features_path'], args['lstm_epochs'], num_features, num_classes)
+    # # extract_cnn_features(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
+    # # extract_cnn_features(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
+    # # model = train_lstm(args['features_path'], args['lstm_epochs'], num_features, num_classes)
 
-    # extract_cnn_features_all(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
-    # extract_cnn_features_all(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
-    num_features = 2048
-    num_classes = len(os.listdir(f'{args["features_path"]}/train'))
-    seqLength = 7
-    model = train_lstm_jittered(args['features_path'], seqLength, args['lstm_epochs'], num_features, num_classes)
+    # # extract_cnn_features_all(f'{args["data_path"]}/train', f'{args["features_path"]}/train')
+    # # extract_cnn_features_all(f'{args["data_path"]}/test', f'{args["features_path"]}/test')
+    # num_features = 2048
+    # num_classes = len(os.listdir(f'{args["features_path"]}/train'))
+    # seqLength = 7
+    # model = train_lstm_jittered(args['features_path'], seqLength, args['lstm_epochs'], num_features, num_classes)
 
-    # model.save("final_model.h5")
+    # # model.save("final_model.h5")

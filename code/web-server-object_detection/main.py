@@ -29,6 +29,7 @@ from keras.applications.inception_v3 import InceptionV3
 from keras.applications.inception_v3 import preprocess_input
 from keras.models import load_model, Model
 from PREP_USER_VIDEO import CLIP_SINGLE_VIDEO as clip_single_video
+from google.cloud import storage
 
 
 LSTM_MODEL_PATH = './models'
@@ -54,7 +55,7 @@ def loadModel():
 
 
 
-loadModel()
+# loadModel()
 
 sign_mapping = {0: 'AGAIN',
                 1: 'BEAUTIFUL',
@@ -66,11 +67,11 @@ sign_mapping = {0: 'AGAIN',
                 7: 'NAME',
                 8: 'WALK'}
 
-if not os.path.exists('user_videos'):
-    os.mkdir('user_videos')
-for key, value in sign_mapping.items():
-    if not os.path.exists(f'user_videos/{value}'):
-        os.mkdir(f'user_videos/{value}')
+# if not os.path.exists('user_videos'):
+#     os.mkdir('user_videos')
+# for key, value in sign_mapping.items():
+#     if not os.path.exists(f'user_videos/{value}'):
+#         os.mkdir(f'user_videos/{value}')
 
 def get_cnn_features(frames):
     with graph.as_default():
@@ -163,26 +164,48 @@ def predictVideo():
             timestamp = int(time.time())
             videofile = flask.request.files["video"]
             filename = "video.avi"
-            videofile.save(filename)
-            loggedVideoFile = os.path.join('user_videos', attempted_sign.upper(), str(timestamp) + '.avi')
-            copyfile(filename, loggedVideoFile)
-            videofile.close()
-            clip_single_video(VIDEO_FILE=filename, OUTPUT_FILE=filename, ADDITIONAL_LEADING_FRAMES_TO_CLIP=8, ADDITIONAL_TRAILING_FRAMES_TO_CLIP=10)
-            sequenceLength = 7
-            featureLength = 2048
-            predictions = processVideo(filename, sequenceLength, featureLength)
-            data["predictions"] = predictions
-            # indicate that the request was a success
-            data["success"] = True
 
-            print(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
-            logfilename = 'logs/api.log'
-            if os.path.exists(logfilename):
-                append_write = 'a' # append if already exists
+            # Create a Cloud Storage client.
+            gcs = storage.Client()
+
+            bucket_name = "w210-asl-attempted-signs-" + attempted_sign.lower()
+            buckets = gcs.list_buckets()
+            buckets = [bucket.name for bucket in buckets]
+            print(buckets)
+            if(bucket_name not in buckets):
+                bucket = gcs.create_bucket(bucket_name)
+                print('Bucket {} created.'.format(bucket.name))
             else:
-                append_write = 'w' # make a new file if not
-            with open(logfilename, append_write) as f:
-                f.write(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
+                bucket = gcs.get_bucket(bucket_name)
+                print('Bucket {} already exists.'.format(bucket_name))
+
+            # Create a new blob and upload the file's content.
+            print(videofile.filename)
+            blob = bucket.blob(videofile.filename)
+            blob.upload_from_string(videofile.read(), content_type=videofile.content_type)
+
+
+
+            # videofile.save(filename)
+            # loggedVideoFile = os.path.join('user_videos', attempted_sign.upper(), str(timestamp) + '.avi')
+            # copyfile(filename, loggedVideoFile)
+            # videofile.close()
+            # clip_single_video(VIDEO_FILE=filename, OUTPUT_FILE=filename, ADDITIONAL_LEADING_FRAMES_TO_CLIP=8, ADDITIONAL_TRAILING_FRAMES_TO_CLIP=10)
+            # sequenceLength = 7
+            # featureLength = 2048
+            # predictions = processVideo(filename, sequenceLength, featureLength)
+            # data["predictions"] = predictions
+            # # indicate that the request was a success
+            # data["success"] = True
+
+            # print(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
+            # logfilename = 'logs/api.log'
+            # if os.path.exists(logfilename):
+            #     append_write = 'a' # append if already exists
+            # else:
+            #     append_write = 'w' # make a new file if not
+            # with open(logfilename, append_write) as f:
+            #     f.write(f'{timestamp},{username},{attempted_sign},{predictions[0]["label"]},{predictions[0]["conf"]}\n')
 
     # return the data dictionary as a JSON response
     return flask.jsonify(data)

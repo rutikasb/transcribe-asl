@@ -6,3 +6,4 @@ tensorflow==1.13.1
 opencv-python-headless
 Pillow==6.0.0
 Keras==2.2.4
+google-cloud-storage==1.13.2
